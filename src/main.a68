@@ -1,0 +1,57 @@
+	CPU	68000
+	PADDING OFF
+	ORG		$000000
+	BINCLUDE	"prg.orig"
+
+	INCLUDE	"src/misc/vars.inc"
+	INCLUDE	"src/platform/guwange_hw.inc"
+
+ROM_FREE = $0FFF20
+
+LAST_ROM	:=	ROM_FREE
+
+; Disable debug test freeze when P2 start is pressed.
+	ORG	$D2E
+	bra	$DA2
+
+; Map test switch back to enter test menu.
+	ORG	$988
+	andi.w	#4, d0
+
+; Have the press start title screen time out like the normal title screen, and
+; continue the normal attract mode sequence.
+	ORG	$5D28
+	jmp	title_start_timeout_hook
+
+; Disable the (already inconsequential) checksum for a faster boot.
+	ORG	$7860
+	bra	$789A  ; Jump to where it marks the checksum as good.
+
+	ORG	LAST_ROM
+
+title_start_timeout_hook:
+	addq.w	#1, 2(a5)
+
+	; Has start already been pressed?
+	btst	#1, $A(a5)
+	beq	.start_not_pressed
+	bra	.resume_normal_routine
+
+.start_not_pressed:
+	cmpi.w	#600, 2(a5)  ; Have 600 frames (ten seconds) elapsed?
+	bne	.not_frame_600 
+
+	; On frame 600, begin transition to demo mode
+	lea	($0071A8).l, a0
+	jsr	($05CFBC).l  ; Same routine as the normal title uses.
+	bra	.resume_normal_routine
+
+.not_frame_600:
+	bcs	.resume_normal_routine  ; Branch if less than 10 sec (normal).
+	jmp	$5C12  ; Re-use transition code code from the normal title.
+
+.resume_normal_routine:
+	btst	#1, $A(a5)
+	jmp	$5D2E
+
+LAST_ROM	:=	*

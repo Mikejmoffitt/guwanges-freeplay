@@ -1,0 +1,7 @@
+data/
+history/
+guwanges/
+*.o
+*.bin
+*.zip
+*.orig
